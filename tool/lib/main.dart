@@ -1,20 +1,20 @@
 import 'dart:ui' as ui;
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:split_view/split_view.dart';
+import 'package:file_picker/file_picker.dart';
 import 'design.dart';
-import 'rust.dart';
-
-late Rust rust;
+import 'rust.dart' as rust;
 
 void main() {
-  rust = Rust('../target/debug/libcodec.so');
-  var encoder = rust.createEncoder();
-  runApp(Application(encoder: encoder));
+  rust.load('../target/debug/libcodec.so');
+  runApp(Application());
 }
 
 class Application extends StatelessWidget {
-  final Encoder encoder;
-  const Application({required this.encoder, Key? key}) : super(key: key);
+  const Application({
+    Key? key,
+  }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
@@ -24,14 +24,15 @@ class Application extends StatelessWidget {
         backgroundColor: Colors.black,
         primarySwatch: Colors.grey,
       ),
-      home: Main(encoder: encoder),
+      home: Main(),
     );
   }
 }
 
 class Main extends StatefulWidget {
-  final Encoder encoder;
-  const Main({required this.encoder, Key? key}) : super(key: key);
+  const Main({
+    Key? key,
+  }) : super(key: key);
 
   @override
   _MainState createState() => _MainState();
@@ -40,13 +41,22 @@ class Main extends StatefulWidget {
 class _MainState extends State<Main> {
   SplitViewController? _splitViewController1;
   SplitViewController? _splitViewController2;
-  ui.Image? _image;
+  List<ui.Image> _frames = [];
 
   @override
   initState() {
     super.initState();
     _splitViewController1 = SplitViewController(weights: [0.8, 0.2]);
     _splitViewController2 = SplitViewController(weights: [0.2, 0.4, 0.4]);
+    /*
+    _rustImage = rust.imageNew(320, 240);
+    () async {
+      final image = await rust.makeUiImage(_rustImage!);
+      setState(() {
+        _image = image;
+      });
+    }();
+    */
   }
 
   Widget _buildStream() {
@@ -91,14 +101,7 @@ class _MainState extends State<Main> {
   Widget _buildFrame() {
     return Scaffold(
       body: Container(
-        child: Center(
-          child: (_image != null)
-              ? RawImage(
-                  image: _image,
-                  fit: BoxFit.contain,
-                )
-              : null,
-        ),
+        child: Center(),
         color: Colors.grey.shade800,
       ),
     );
@@ -109,14 +112,10 @@ class _MainState extends State<Main> {
       body: Container(
         child: Center(
           child: ElevatedButton.icon(
-              icon: const Icon(Icons.power),
-              label: const Text('current action'),
-              onPressed: () async {
-                final image = await rust.encoderGetImage(widget.encoder);
-                setState(() {
-                  _image = image;
-                });
-              }),
+            icon: const Icon(Icons.power),
+            label: const Text('current action'),
+            onPressed: null,
+          ),
         ),
         color: Colors.grey.shade800,
       ),
@@ -124,11 +123,26 @@ class _MainState extends State<Main> {
   }
 
   Widget _buildTimeline() {
+    List<Widget> timelineImages = [];
+    for (var frame in _frames) {
+      timelineImages.add(
+        TextButton(
+          child: RawImage(
+            image: frame,
+          ),
+          onPressed: () {},
+        ),
+      );
+    }
     return Stack(
       fit: StackFit.expand,
       children: [
         Container(
-          child: const Center(child: Text('timeline')),
+          padding: EdgeInsets.all(5),
+          child: ListView(
+            scrollDirection: Axis.horizontal,
+            children: timelineImages,
+          ),
           color: Colors.grey.shade800,
         ),
         Positioned(
@@ -162,7 +176,23 @@ class _MainState extends State<Main> {
                   child: const Icon(Icons.folder_open),
                   style: ButtonStyle(
                       backgroundColor: MaterialStateProperty.all(frameColor)),
-                  onPressed: () {},
+                  onPressed: () async {
+                    final FilePickerResult? result = await FilePicker.platform
+                        .pickFiles(allowMultiple: true);
+                    if (result != null) {
+                      List<File> files =
+                          result.paths.map((path) => File(path!)).toList();
+                      List<ui.Image> frames = [];
+                      for (var file in files) {
+                        final bytes = await file.readAsBytes();
+                        final frame = await decodeImageFromList(bytes);
+                        frames.add(frame);
+                      }
+                      setState(() {
+                        _frames = frames;
+                      });
+                    }
+                  },
                 ),
               ),
               const SizedBox(width: 10),

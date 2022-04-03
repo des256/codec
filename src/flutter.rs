@@ -7,36 +7,33 @@ use {
 };
 
 #[no_mangle]
-pub extern fn create_encoder() -> *mut c_void {
-    let boxed_encoder = Box::new(Encoder::new());
-    Box::into_raw(boxed_encoder) as *mut Encoder as *mut c_void
+pub extern fn image_new(width: usize,height: usize) -> *mut Image {
+    let boxed_image = Box::new(Image::new(width,height));
+    Box::into_raw(boxed_image)
 }
 
 #[no_mangle]
-pub extern fn destroy_encoder(encoder: *mut c_void) {
-    unsafe { Box::from_raw(encoder as *mut Encoder); }
+pub extern fn image_drop(image_ptr: *mut Image) {
+    unsafe { Box::from_raw(image_ptr); }
 }
 
 #[no_mangle]
-pub extern fn encoder_get_image_width(encoder: *mut c_void) -> u32 {
-    let encoder = unsafe { Box::from_raw(encoder as *mut Encoder) };
-    let width = encoder.image.width;
+pub extern fn encoder_new(width: usize,height: usize) -> *mut Encoder {
+    let boxed_encoder = Box::new(Encoder::new(width,height));
+    Box::into_raw(boxed_encoder)
+}
+
+#[no_mangle]
+pub extern fn encoder_drop(encoder: *mut Encoder) {
+    unsafe { Box::from_raw(encoder); }
+}
+
+#[no_mangle]
+pub extern fn encoder_encode(encoder: *mut Encoder,image: *mut Image) -> *const c_void {
+    let mut encoder = unsafe { Box::from_raw(encoder) };
+    let image = unsafe { Box::from_raw(image) };
+    let result = &encoder.encode(&image) as *const Vec<u8>;
     Box::leak(encoder);
-    width as u32
-}
-
-#[no_mangle]
-pub extern fn encoder_get_image_height(encoder: *mut c_void) -> u32 {
-    let encoder = unsafe { Box::from_raw(encoder as *mut Encoder) };
-    let height = encoder.image.height;
-    Box::leak(encoder);
-    height as u32
-}
-
-#[no_mangle]
-pub extern fn encoder_get_image_pixels_mut_ref(encoder: *mut c_void) -> *mut u8 {
-    let mut encoder = unsafe { Box::from_raw(encoder as *mut Encoder) };
-    let pixels_ptr = encoder.image.pixels.as_mut_ptr();
-    Box::leak(encoder);
-    pixels_ptr as *mut u8
+    Box::leak(image);
+    result as *const c_void
 }

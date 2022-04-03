@@ -3,7 +3,8 @@ use {
 };
 
 struct Frame {
-    width: usize,height: usize,
+    width: usize,
+    height: usize,
     y: Vec<u8>,
     cb: Vec<u8>,
     cr: Vec<u8>,

@@ -1,18 +1,25 @@
 use {
     crate::*,
-    std::{
-        rc::Rc,
-    },
 };
 
 pub struct Encoder {
-    pub image: Image,
+    pub width: usize,
+    pub height: usize,
+    images: Vec<Image>,  // most recent frames
 }
 
 impl Encoder {
-    pub fn new() -> Encoder {
+
+    pub fn new(width: usize,height: usize) -> Encoder {
         Encoder {
-            image: Image::new(320,240),
+            width: width,
+            height: height,
+            images: Vec::new(),
         }
+    }
+
+    pub fn encode(&mut self,image: &Image) -> Vec<u8> {
+        // TODO: encode frame
+        Vec::new()
     }
 }
